@@ -12,9 +12,7 @@ import quantized_mesh_tile.terrain
 # https://pypi.python.org/pypi/quantized-mesh-tile/
 # pip install quantized-mesh-tile
 
-target_size = 150
-
-class Srtm:
+class Grd:
     def __init__(self,fname):
         self.ncfile = scipy.io.netcdf.netcdf_file(fname)
         self.xcount = self.ncfile.dimensions['lon']
@@ -53,18 +51,19 @@ class Point:
             h = 0.0
         return (self.lon,self.lat,h)
 
-if len(sys.argv) != 3:
-    print 'Usage: srtm2qmesh infile outdir'
+if len(sys.argv) != 2:
+    print 'Usage: base2qmesh params.json'
     sys.exit(1)
+
+params = json.load(open(sys.argv[1]))
+print params
 
 geodetic = quantized_mesh_tile.global_geodetic.GlobalGeodetic(True)
 
-outdir = sys.argv[2]
-
-srtm = Srtm(sys.argv[1])
-print srtm.xcount,'x',srtm.ycount
-print srtm.minx,srtm.miny,'-',srtm.maxx,srtm.maxy
-print 'dx,dy',srtm.dx,srtm.dy
+base = Grd(params['basemap'])
+print base.xcount,'x',base.ycount
+print base.minx,base.miny,'-',base.maxx,base.maxy
+print 'dx,dy',base.dx,base.dy
 
 layer = {'tilesjon':'2.1.0',
          'format':'quantized-mesh-1.0',
@@ -74,13 +73,13 @@ layer = {'tilesjon':'2.1.0',
          'available':[]
         }
 
-for level in range(5):
+for level in range(params['baseLevels']):
     layer['maxzoom']=level
     factor = 2**level
     for x in range(2*factor):
         for y in range(factor):
             print geodetic.TileBounds(x,y,level)
-            fname = os.path.join(outdir,str(level)+'/'+str(x)+'/'+str(y)+'.terrain')
+            fname = os.path.join(params['outputDirectory'],str(level)+'/'+str(x)+'/'+str(y)+'.terrain')
             print '\t',fname
             dn = os.path.dirname(fname)
             if not os.path.isdir(dn):
@@ -88,32 +87,32 @@ for level in range(5):
             if os.path.isfile(fname):
                 os.remove(fname)
             b = geodetic.TileBounds(x,y,level)
-            xStep = ((b[2]-b[0])/target_size)/srtm.dx
-            yStep = ((b[3]-b[1])/target_size)/srtm.dy
+            xStep = ((b[2]-b[0])/params['tileSize'])/base.dx
+            yStep = ((b[3]-b[1])/params['tileSize'])/base.dy
             print '\txStep:',xStep,'yStep:',yStep
-            xi = (b[0]-srtm.minx)/srtm.dx
-            yi = (b[1]-srtm.miny)/srtm.dy
+            xi = (b[0]-base.minx)/base.dx
+            yi = (b[1]-base.miny)/base.dy
             print '\txi,yi:',xi,yi
-            print '\t',srtm.getPointAtIndex(xi,yi)
+            print '\t',base.getPointAtIndex(xi,yi)
             sys.stdout.flush()
             triangles = []
             verticies = []
-            for j in range(target_size):
-                for i in range(target_size):
-                    if i < (target_size) and j < (target_size):
-                        t1 = srtm.getPointAtIndex(xi+i*xStep,yi+j*yStep)
-                        t2 = srtm.getPointAtIndex(xi+(i+1)*xStep,yi+j*yStep)
-                        t3 = srtm.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
+            for j in range(params['tileSize']):
+                for i in range(params['tileSize']):
+                    if i < (params['tileSize']) and j < (params['tileSize']):
+                        t1 = base.getPointAtIndex(xi+i*xStep,yi+j*yStep)
+                        t2 = base.getPointAtIndex(xi+(i+1)*xStep,yi+j*yStep)
+                        t3 = base.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
                         triangles.append((t1.asTriple(),t2.asTriple(),t3.asTriple()))
-                        t1 = srtm.getPointAtIndex(xi+i*xStep,yi+j*yStep)
-                        t2 = srtm.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
-                        t3 = srtm.getPointAtIndex(xi+i*xStep,yi+(j+1)*yStep)
+                        t1 = base.getPointAtIndex(xi+i*xStep,yi+j*yStep)
+                        t2 = base.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
+                        t3 = base.getPointAtIndex(xi+i*xStep,yi+(j+1)*yStep)
                         triangles.append((t1.asTriple(),t2.asTriple(),t3.asTriple()))
-                    if i == (target_size-1) and j == (target_size-1):
-                        print '\t',srtm.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
+                    if i == (params['tileSize']-1) and j == (params['tileSize']-1):
+                        print '\t',base.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
 
             tile = quantized_mesh_tile.encode(triangles,bounds=geodetic.TileBounds(x,y,level),hasLighting=True)
             tile.toFile(fname)
             #print quantized_mesh_tile.topology.TerrainTopology(geometries=triangles)
 
-open(os.path.join(outdir,'layer.json'),'w').write(json.dumps(layer))
+open(os.path.join(params['outputDirectory'],'layer.json'),'w').write(json.dumps(layer))

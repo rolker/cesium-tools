@@ -1,5 +1,5 @@
-out/layer.json: srtm2qmesh.py
-	./srtm2qmesh.py data/topo15.grd out
+out/layer.json: srtm2qmesh.py params.json
+	./srtm2qmesh.py params.json
 
 clean:
 	rm -rf out/*

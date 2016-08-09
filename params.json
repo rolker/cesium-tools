@@ -1,0 +1,7 @@
+{
+    "basemap": "data/topo15.grd",
+    "baseLevels": 3,
+    "tileSize": 150,
+    "maps": ["data/autogrid-item-79008/output.grd"],
+    "outputDirectory": "out"
+}
