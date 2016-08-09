@@ -12,7 +12,7 @@ import quantized_mesh_tile.terrain
 # https://pypi.python.org/pypi/quantized-mesh-tile/
 # pip install quantized-mesh-tile
 
-target_size = 100
+target_size = 150
 
 class Srtm:
     def __init__(self,fname):
@@ -112,7 +112,7 @@ for level in range(5):
                     if i == (target_size-1) and j == (target_size-1):
                         print '\t',srtm.getPointAtIndex(xi+(i+1)*xStep,yi+(j+1)*yStep)
 
-            tile = quantized_mesh_tile.encode(triangles,bounds=geodetic.TileBounds(x,y,level))
+            tile = quantized_mesh_tile.encode(triangles,bounds=geodetic.TileBounds(x,y,level),hasLighting=True)
             tile.toFile(fname)
             #print quantized_mesh_tile.topology.TerrainTopology(geometries=triangles)
 
